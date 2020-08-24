@@ -76,7 +76,7 @@ public class BytesUtil {
      * @param f
      * @return
      */
-    public static byte[] floatToByte(float f){
+    public static int floatToBit(float f){
 
         //1.确定数符
         int sign = 0; //数符
@@ -88,42 +88,89 @@ public class BytesUtil {
         String floatValue = (f+"");
         int index = floatValue.indexOf(".");
 
+        //2.字符串分割，获取整数部分和小数部分
         String roudNumber = floatValue.substring(0, index);
-        String decimal = floatValue.substring(index+1);
+        String decimal = floatValue.substring(index);
 
-        StringBuilder roudSb = new StringBuilder("");
+        //3.整数部分除2取余
         int tmpInt = Integer.parseInt(roudNumber);
-        while (true){
-            int bit = tmpInt%2;
-            tmpInt = tmpInt/2;
-            roudSb.append(bit ^ 1);
-            if(tmpInt == 0 || roudSb.length() == 23){
-                break;
+        StringBuilder roudSb = new StringBuilder("");
+        if (tmpInt > 0) {
+            while (true){
+                int bit = tmpInt%2;
+                tmpInt = tmpInt/2;
+                roudSb.append(bit);
+                if(tmpInt == 0 || roudSb.length() == 23){
+                    break;
+                }
             }
+            roudSb.reverse();
         }
-        roudSb.reverse();
+        int e = roudSb.length()+127;
 
+        //4.小数部分乘2取整
         StringBuilder decimalSb = new StringBuilder("");
-        float tmpFloat = Float.parseFloat(decimal);
+        float tmpFloat = Float.parseFloat("0"+decimal);
         while (true){
             tmpFloat = tmpFloat*2;
-            int bit = tmpFloat > 1 ? 1 : 0;
-            if(tmpFloat > 1.0f){
-                bit = 1;
-                decimalSb.append(bit ^ 1);
+            int bit = tmpFloat >= 1 ? 1 : 0;
+            decimalSb.append(bit);
+            if(tmpFloat >= 1.0f){
                 tmpFloat = tmpFloat - 1;
-            }else if(tmpFloat == 1.0f){
-                decimalSb.append(bit ^ 1);
-                break;
-            }else {
-                decimalSb.append(bit ^ 1);
             }
-            if(decimalSb.length() == 23){
+            if(decimalSb.length() == 23-roudSb.length()){
                 break;
             }
         }
 
-        System.out.println(roudSb.toString());
-        return null;
+        //5.完整拼接，移位去除最高位1
+        roudSb.append(decimalSb.toString());
+        if (e >= 1 && e <= 254) {
+            //IEEE 754 1<=e<=254, E=e-126
+            for(int i=0; i<roudSb.length(); i++){
+                e--;
+                if(roudSb.charAt(i) == '0'){
+                    roudSb.deleteCharAt(i);
+                    roudSb.append('0');
+                }else {
+                    //
+                    roudSb.deleteCharAt(i);
+                    roudSb.append('1');
+                    break;
+                }
+            }
+        }else if(e == 255){
+            //...
+        } else {
+            //IEEE 754 e=0, M!=0 E=-126
+            e = -126;
+        }
+
+        int result = 0;
+        for(int i=roudSb.length()-1; i>=0; i--){
+            if(roudSb.charAt(i) == '1'){
+                result = result | (1<<(roudSb.length()-i-1));
+            }
+        }
+
+//        System.out.println("S=" + sign);
+//        System.out.print("M=");
+//        intToBits(result);
+//        System.out.println("E=" + e);
+
+        result = result | (e << 23);
+        result = result | (sign << 31);
+
+
+//        System.out.print("result=");
+//        intToBits(result);
+        return result;
+    }
+
+    public static void intToBits(int a){
+        for(byte i=0; i<32; i++){
+            System.out.print(((0x80000000>>>i) & a) >>> (31-i));
+        }
+        System.out.println();
     }
 }

@@ -12,7 +12,6 @@ public class TestInt {
 
     public static void main(String[] args) {
         floatToBits();
-        s();
     }
 
     public static void byteToInt(){
@@ -43,32 +42,14 @@ public class TestInt {
 
     /**
      * -127.45678f - -1023481377 - 1 1000010111111101110100111011111
+     * 17.625 = 10001.10
      */
     public static void floatToBits(){
-//        float a = -127.45678f;
-        float a = 17.625f;
-        BytesUtil.floatToByte(a);
+        float a = -0.45678f;
+//        float a = 17.625f;
+        BytesUtil.floatToBit(a);
         int b = Float.floatToIntBits(a);
         System.out.println(b);
         intToBits(b);
-    }
-
-    public static void s(){
-        String s = "00000010001011000100000";
-
-        float sum = 0.0f;
-        for(int i=0, j=1; i<s.length(); i++, j++){
-
-            int y = Integer.parseInt(s.charAt(i)+"");
-            if (y!=0) {
-                float x = 1;
-                for(int tmp=0; tmp<j; tmp++){
-                    x = x/2.0f;
-                }
-                sum = sum+y*x;
-                System.out.println(y*x);
-            }
-        }
-        System.out.println(sum);
     }
 }
