@@ -47,9 +47,11 @@ public class TestInt {
     public static void floatToBits(){
         float a = -0.45678f;
 //        float a = 17.625f;
-        BytesUtil.floatToBit(a);
+        System.out.println(BytesUtil.floatToBit(a));
         int b = Float.floatToIntBits(a);
         System.out.println(b);
         intToBits(b);
+
+        BytesUtil.intToFloat(b);
     }
 }

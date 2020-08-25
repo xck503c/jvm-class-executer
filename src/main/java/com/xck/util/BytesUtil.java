@@ -73,6 +73,8 @@ public class BytesUtil {
      * 这里采用IEEE 754标准进行分解，用于验证class文件中存储的值
      *
      * 包含数符，尾数，阶码，尾数用补数，阶码用移码
+     *
+     * 需要可以动态扩展精度
      * @param f
      * @return
      */
@@ -106,38 +108,58 @@ public class BytesUtil {
             }
             roudSb.reverse();
         }
-        int e = roudSb.length()+127;
+
+        //先定位整数部分的阶
+        int firstIndexOneInRound = roudSb.indexOf("1");
+        // 101.xxx --- 1.01 --- 3-1=2
+        int e = firstIndexOneInRound!=-1?roudSb.length()-1:0;
 
         //4.小数部分乘2取整
         StringBuilder decimalSb = new StringBuilder("");
         float tmpFloat = Float.parseFloat("0"+decimal);
-        while (true){
-            tmpFloat = tmpFloat*2;
-            int bit = tmpFloat >= 1 ? 1 : 0;
-            decimalSb.append(bit);
-            if(tmpFloat >= 1.0f){
-                tmpFloat = tmpFloat - 1;
-            }
-            if(decimalSb.length() == 23-roudSb.length()){
-                break;
+
+        boolean isFirstOneInDecimal = false;
+        int countZero = 0;
+        if (tmpFloat > 0.0f) {
+            while (true){
+                tmpFloat = tmpFloat*2;
+                int bit = tmpFloat >= 1 ? 1 : 0;
+
+                if (e == 0) { //只有整数部分不存在，才可以进行精度再次扩展，否则，精度上限只能为1，也就是23+1
+                    //0.0001 --- 相当于多了4个位的精度，感人
+                    if (bit == 1) {
+                        isFirstOneInDecimal = true;
+                        countZero++;
+                    }
+                    if(!isFirstOneInDecimal && bit == 0) countZero++;
+                }
+
+                decimalSb.append(bit);
+                if(tmpFloat >= 1.0f){
+                    tmpFloat = tmpFloat - 1;
+                }
+
+                //动态增加精度
+                if(tmpFloat == 0.0f || decimalSb.length() == 23-roudSb.length()+(e==0?0:1)+countZero){
+                    break;
+                }
             }
         }
+
+        //再定位小数部分的阶
+        if(e == 0){
+            int firstIndexOneInDecimal = decimalSb.indexOf("1");
+            //0.011 --- 1+1=2 --- 1.1xxx
+            e = firstIndexOneInDecimal!=-1?-(firstIndexOneInDecimal+1):0;
+        }
+        e+=127;
 
         //5.完整拼接，移位去除最高位1
         roudSb.append(decimalSb.toString());
         if (e >= 1 && e <= 254) {
             //IEEE 754 1<=e<=254, E=e-126
-            for(int i=0; i<roudSb.length(); i++){
-                e--;
-                if(roudSb.charAt(i) == '0'){
-                    roudSb.deleteCharAt(i);
-                    roudSb.append('0');
-                }else {
-                    //
-                    roudSb.deleteCharAt(i);
-                    roudSb.append('1');
-                    break;
-                }
+            while (roudSb.length() > 23){ //因为最长存储只能23位，所以要删除前面多余的部分
+                roudSb.deleteCharAt(0);
             }
         }else if(e == 255){
             //...
@@ -146,6 +168,7 @@ public class BytesUtil {
             e = -126;
         }
 
+        //将字符转换为int类型
         int result = 0;
         for(int i=roudSb.length()-1; i>=0; i--){
             if(roudSb.charAt(i) == '1'){
@@ -153,10 +176,10 @@ public class BytesUtil {
             }
         }
 
-//        System.out.println("S=" + sign);
-//        System.out.print("M=");
-//        intToBits(result);
-//        System.out.println("E=" + e);
+        System.out.println("S=" + sign);
+        System.out.println("E=" + e);
+        System.out.print("M=");
+        intToBits(result);
 
         result = result | (e << 23);
         result = result | (sign << 31);
@@ -165,6 +188,37 @@ public class BytesUtil {
 //        System.out.print("result=");
 //        intToBits(result);
         return result;
+    }
+
+    public static float intToFloat(int floatInt){
+        //1. 先分解
+        int sign = floatInt >>> 31;
+        //0111 1111 1000
+        int e = (floatInt & (0x7f800000)) >>> 23;
+        int m = floatInt & (0x007fffff);
+
+//        System.out.println("S=" + sign);
+//        System.out.println("E=" + e);
+//        System.out.print("M=");
+//        intToBits(m);
+
+        if (e >= 1 && e <= 254) {
+            e-=127;
+            if(e < 0) { //说明无整数部分
+
+            }else if(e == 1){ //说明存在整数部分
+
+            }else{
+
+            }
+        }else if(e == 255){
+            //...
+        } else if(e == -126){
+           e = 0;
+        }
+
+
+        return 0;
     }
 
     public static void intToBits(int a){
